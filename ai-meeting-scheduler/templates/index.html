@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Scheduler</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        #chat-box { height: 400px; border: 1px solid #ccc; overflow-y: scroll; padding: 10px; margin-bottom: 10px; }
+        .user { color: blue; text-align: right; }
+        .ai { color: green; text-align: left; }
+    </style>
+</head>
+<body>
+    <h1>📅 AI Meeting Scheduler</h1>
+    <div id="chat-box"></div>
+    <input type="text" id="user-input" placeholder="Type here..." style="width: 70%;">
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        async function sendMessage() {
+            let input = document.getElementById("user-input");
+            let text = input.value;
+            if (!text) return;
+
+            // 1. Show user message
+            let box = document.getElementById("chat-box");
+            box.innerHTML += `<p class="user"><strong>You:</strong> ${text}</p>`;
+            input.value = "";
+
+            // 2. Send to Python Backend
+            let response = await fetch("/chat", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ message: text })
+            });
+            let data = await response.json();
+
+            // 3. Show AI response
+            box.innerHTML += `<p class="ai"><strong>AI:</strong> ${data.reply}</p>`;
+
+            // 4. Scroll to bottom
+            box.scrollTop = box.scrollHeight;
+        }
+    </script>
+</body>
+</html>
