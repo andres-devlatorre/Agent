@@ -53,7 +53,13 @@ def home():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    user_text = request.json.get("message")
+    body = request.get_json(silent=True)
+    if not body:
+        return jsonify({"error": "Request body must be valid JSON"}), 400
+    user_text = body.get("message")
+    if not user_text or not isinstance(user_text, str) or not user_text.strip():
+        return jsonify({"error": "Field 'message' is required and must be a non-empty string"}), 400
+    user_text = user_text.strip()
     chat_history.append(HumanMessage(content=user_text))
 
     # Invoke AI
