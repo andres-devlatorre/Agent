@@ -47,9 +47,10 @@ class TestChatInputValidation(unittest.TestCase):
 
     def setUp(self):
         flask_app.app.config["TESTING"] = True
+        flask_app.app.secret_key = "test-secret"
         self.client = flask_app.app.test_client()
-        # Clear shared chat_history before each test
-        flask_app.chat_history[:] = [flask_app.chat_history[0]]
+        # Clear per-session histories before each test
+        flask_app.session_histories.clear()
 
     # ------------------------------------------------------------------
     # Bad / missing request body
@@ -139,12 +140,12 @@ class TestChatInputValidation(unittest.TestCase):
         mock_hm.assert_called_once_with(content="hello")
 
     # ------------------------------------------------------------------
-    # Bad inputs must NOT corrupt chat_history
+    # Bad inputs must NOT create or corrupt any session history
     # ------------------------------------------------------------------
-    def test_invalid_request_does_not_append_to_chat_history(self):
-        history_len_before = len(flask_app.chat_history)
+    def test_invalid_request_does_not_create_session_history(self):
         self.client.post("/chat", json={"message": ""})
-        self.assertEqual(len(flask_app.chat_history), history_len_before)
+        self.assertEqual(len(flask_app.session_histories), 0,
+                         "An invalid request must not create a session history entry")
 
 
 if __name__ == "__main__":
