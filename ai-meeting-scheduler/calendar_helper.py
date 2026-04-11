@@ -1,3 +1,4 @@
+import os
 import os.path
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -6,6 +7,9 @@ from googleapiclient.discovery import build
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
+
+# Timezone used for both event start and end. Override via TIMEZONE env var.
+CALENDAR_TIMEZONE = os.getenv("TIMEZONE", "America/New_York")
 
 def get_calendar_service():
     """Handles the authentication and returns the API service."""
@@ -50,11 +54,11 @@ def add_event_to_calendar(summary, start_time_iso, duration_minutes=60):
         "summary": summary,
         "start": {
             "dateTime": start_dt.isoformat(),
-            "timeZone": "America/Guayaquil", # Change this to your timezone!
+            "timeZone": CALENDAR_TIMEZONE,
         },
         "end": {
             "dateTime": end_dt.isoformat(),
-            "timeZone": "America/New_York",
+            "timeZone": CALENDAR_TIMEZONE,
         },
     }
 
