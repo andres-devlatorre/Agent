@@ -1,6 +1,7 @@
 import datetime
 import os
 import uuid
+from collections import OrderedDict
 from flask import Flask, render_template, request, jsonify, session
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
@@ -49,8 +50,39 @@ RULES:
 3. Call the 'book_meeting' tool with that ISO string.
 """
 
+# ---------------------------------------------------------------------------
+# Bounded LRU session store
+# ---------------------------------------------------------------------------
+class _BoundedSessionStore(OrderedDict):
+    """
+    OrderedDict capped at max_size entries.
+    On overflow the least-recently-used session is evicted.
+    Accessing an existing key via get_history() promotes it to most-recent.
+    """
+    def __init__(self, max_size: int):
+        super().__init__()
+        self._max = max_size
+
+    def __setitem__(self, key, value):
+        if key in self:
+            self.move_to_end(key)
+        super().__setitem__(key, value)
+        if len(self) > self._max:
+            self.popitem(last=False)   # drop the oldest entry
+
+    def get_history(self, key, factory):
+        """Return the history for key, creating it with factory() if absent."""
+        if key not in self:
+            self[key] = factory()
+        else:
+            self.move_to_end(key)      # mark as recently used
+        return self[key]
+
+
+MAX_SESSIONS = int(os.getenv("MAX_SESSIONS", "1000"))
+
 # Per-session chat histories: { session_id: [SystemMessage, ...] }
-session_histories = {}
+session_histories = _BoundedSessionStore(MAX_SESSIONS)
 
 # --- ROUTES ---
 @app.route("/")
@@ -71,9 +103,10 @@ def chat():
     if "session_id" not in session:
         session["session_id"] = str(uuid.uuid4())
     session_id = session["session_id"]
-    if session_id not in session_histories:
-        session_histories[session_id] = [SystemMessage(content=_make_system_prompt())]
-    history = session_histories[session_id]
+    history = session_histories.get_history(
+        session_id,
+        lambda: [SystemMessage(content=_make_system_prompt())],
+    )
 
     history.append(HumanMessage(content=user_text))
 
